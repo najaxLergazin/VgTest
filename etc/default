@@ -1,0 +1,36 @@
+server {
+        listen 80;
+
+        root /var/www/magento;
+        index index.html index.htm index.php;
+
+        server_name localhost magentotest.com *.magentotest.com;
+
+        if ($http_host != "magentotest.com") {
+                rewrite ^ $scheme://magentotest.com$request_uri permanent;
+        }
+
+        location / {
+                index index.html index.php;
+                try_files $uri $uri/ =404;
+        }
+
+        location @handler { ## Magento uses a common front handler
+                rewrite / /index.php;
+        }
+
+        location ~ .php/ { ## Forward paths like /js/index.php/x.js to relevant handler
+                rewrite ^(.*.php)/ $1 last;
+        }
+
+        location ~ .php$ { ## Execute PHP scripts
+                if (!-e $request_filename) { rewrite / /index.php last; }
+
+        fastcgi_pass   127.0.0.1:9000;
+        fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+        fastcgi_param  MAGE_RUN_CODE default; ## Store code is defined in administration &gt; Configuration &gt; Manage Stores
+        fastcgi_param  MAGE_RUN_TYPE store;
+        include        fastcgi_params; ## See /etc/nginx/fastcgi_params
+        }
+
+}
